@@ -75,7 +75,7 @@ services:
 
   bgs:
     # to build/run locally, uncomment this instead
-    #build: ../bigsky/
+    build: ../bigsky/
     image: ghcr.io/bluesky-social/indigo:bigsky-ed809269938c453ebed3a05487acc6417d77bb4e
     ports:
       - "2470:2470"

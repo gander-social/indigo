@@ -1,0 +1,94 @@
+# Minimal AT Protocol Development Infrastructure
+# This provides only the essential external services needed for development
+# The AT Protocol services themselves run directly via Go tooling (make targets)
+#
+# Educational Note: This approach aligns with Bluesky's development practices
+# - Fast iteration with Go services running directly
+# - Minimal external dependencies in containers
+# - SQLite for most development work
+# - PostgreSQL/Redis only when needed for specific testing
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+services:
+  # PostgreSQL for testing with production-like database
+  # Educational Note: Most development uses SQLite, but PostgreSQL is needed
+  # for testing database-specific features and performance characteristics
+  postgres:
+    image: postgres:14-alpine
+    container_name: atproto_dev_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bsky
+      POSTGRES_PASSWORD: yksb
+      POSTGRES_DB: atproto_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql-init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bsky -d atproto_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for session storage and caching
+  # Educational Note: This is essential for your Canadian sovereignty features
+  # where you need session isolation and geographically-aware caching
+  redis:
+    image: redis:7-alpine
+    container_name: atproto_dev_redis
+    restart: unless-stopped
+    command: redis-server --requirepass redis_dev_password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # IPFS for content storage testing
+  # Educational Note: IPFS provides content-addressed storage
+  # Important for Canadian sovereignty - content can be pinned to Canadian nodes
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: atproto_dev_ipfs
+    environment:
+      - IPFS_PROFILE=server
+    ports:
+      - "4001:4001"   # Swarm port
+      - "5001:5001"   # API port
+      - "8080:8080"   # Gateway port
+    volumes:
+      - ./ipfs-data:/data/ipfs
+
+  # Mock HSM for Canadian encryption key management
+  # Educational Note: Simulates Hardware Security Module for development
+  # In production, replace with actual Canadian-compliant HSM
+  mock_hsm:
+    image: nginx:alpine
+    container_name: atproto_dev_hsm
+    ports:
+      - "8200:80"
+    volumes:
+      - ./hsm-mock:/usr/share/nginx/html
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+
+# Educational Note: The actual AT Protocol services (relay, PDS, etc.) 
+# are run directly using the Makefile targets:
+#   make run-dev-relay    # Runs the Go relay implementation
+#   make run-postgres     # Starts just PostgreSQL
+#   make build           # Builds all Go services
+#
+# This approach provides faster development iteration than Docker containers
+# while still providing the external infrastructure services you need.
