@@ -4,7 +4,7 @@
 
 *NOTE: "Relays" used to be called "Big Graph Servers", or "BGS", which inspired the name "bigsky". Many variables and packages still reference "bgs"*
 
-This is the implementation of an atproto Relay which is running in the production network, written and operated by Bluesky.
+This is the implementation of an atproto Relay which is running in the production network, originally written by Bluesky and this version operated and maintained by Gander Social
 
 In atproto, a Relay subscribes to multiple PDS hosts and outputs a combined "firehose" event stream. Downstream services can subscribe to this single firehose a get all relevant events for the entire network, or a specific sub-graph of the network. The Relay maintains a mirror of repo data from all accounts on the upstream PDS instances, and verifies repo data structure integrity and identity signatures. It is agnostic to applications, and does not validate data against atproto Lexicon schemas.
 

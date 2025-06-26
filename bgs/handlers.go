@@ -7,23 +7,33 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	//"log/slog"
+	"net"
+
+	//"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
-	atproto "github.com/bluesky-social/indigo/api/atproto"
-	comatprototypes "github.com/bluesky-social/indigo/api/atproto"
-	"github.com/bluesky-social/indigo/carstore"
-	"github.com/bluesky-social/indigo/events"
-	"github.com/bluesky-social/indigo/mst"
+	atproto "github.com/gander-social/gander-indigo-sovereign/api/atproto"
+	comatprototypes "github.com/gander-social/gander-indigo-sovereign/api/atproto"
+	"github.com/gander-social/gander-indigo-sovereign/carstore"
+	"github.com/gander-social/gander-indigo-sovereign/events"
+	"github.com/gander-social/gander-indigo-sovereign/mst"
 	"gorm.io/gorm"
 
-	"github.com/bluesky-social/indigo/xrpc"
+	"github.com/gander-social/gander-indigo-sovereign/xrpc"
+	"github.com/gorilla/websocket"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/ipld/go-car"
 	"github.com/labstack/echo/v4"
 )
+
+//var log = slog.Default().With("system", "bgs")
 
 func (s *BGS) handleComAtprotoSyncGetRecord(ctx context.Context, collection string, did string, rkey string) (io.Reader, error) {
 	u, err := s.lookupUserByDid(ctx, did)
@@ -317,4 +327,179 @@ func (s *BGS) handleComAtprotoSyncGetLatestCommit(ctx context.Context, did strin
 		Cid: root.String(),
 		Rev: rev,
 	}, nil
+}
+
+func (bgs *BGS) SovereignEventsHandler(c echo.Context) error {
+	if !bgs.config.SovereigntyEnabled {
+		return c.JSON(404, map[string]any{
+			"error": "Sovereign firehose not enabled",
+		})
+	}
+
+	var since *int64
+	if sinceVal := c.QueryParam("cursor"); sinceVal != "" {
+		sval, err := strconv.ParseInt(sinceVal, 10, 64)
+		if err != nil {
+			return err
+		}
+		since = &sval
+	}
+
+	ctx, cancel := context.WithCancel(c.Request().Context())
+	defer cancel()
+
+	// TODO: Add sovereignty-specific authentication here
+	conn, err := websocket.Upgrade(c.Response(), c.Request(), c.Response().Header(), 10<<10, 10<<10)
+	if err != nil {
+		return fmt.Errorf("upgrading websocket: %w", err)
+	}
+	defer conn.Close()
+
+	lastWriteLk := sync.Mutex{}
+	lastWrite := time.Now()
+
+	// Ping handler (same as standard)
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				lastWriteLk.Lock()
+				lw := lastWrite
+				lastWriteLk.Unlock()
+
+				if time.Since(lw) < 30*time.Second {
+					continue
+				}
+
+				if err := conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(5*time.Second)); err != nil {
+					bgs.log.Warn("failed to ping sovereign client", "err", err)
+					cancel()
+					return
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	conn.SetPingHandler(func(message string) error {
+		err := conn.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(time.Second*60))
+		if err == websocket.ErrCloseSent {
+			return nil
+		} else if e, ok := err.(net.Error); ok && e.Temporary() {
+			return nil
+		}
+		return err
+	})
+
+	// Read and discard client messages
+	go func() {
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				bgs.log.Warn("failed to read message from sovereign client", "err", err)
+				cancel()
+				return
+			}
+		}
+	}()
+
+	ident := c.RealIP() + "-sovereign-" + c.Request().UserAgent()
+
+	// Subscribe to events with Canadian filter
+	evts, cleanup, err := bgs.events.Subscribe(ctx, ident, bgs.sovereignEventFilter, since)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	// Track sovereign consumer
+	consumer := SocketConsumer{
+		RemoteAddr:  c.RealIP(),
+		UserAgent:   c.Request().UserAgent(),
+		ConnectedAt: time.Now(),
+	}
+	sentCounter := eventsSentCounter.WithLabelValues(consumer.RemoteAddr, consumer.UserAgent+"-sovereign")
+	consumer.EventsSent = sentCounter
+
+	consumerID := bgs.registerConsumer(&consumer)
+	defer bgs.cleanupConsumer(consumerID)
+
+	// Update metrics
+	bgs.sovereigntyMetrics.ActiveConnections.WithLabelValues("sovereign").Inc()
+	defer bgs.sovereigntyMetrics.ActiveConnections.WithLabelValues("sovereign").Dec()
+
+	logger := bgs.log.With(
+		"consumer_id", consumerID,
+		"remote_addr", consumer.RemoteAddr,
+		"user_agent", consumer.UserAgent,
+		"endpoint", "sovereign",
+	)
+
+	logger.Info("new sovereign consumer", "cursor", since)
+
+	for {
+		select {
+		case evt, ok := <-evts:
+			if !ok {
+				logger.Error("sovereign event stream closed unexpectedly")
+				return nil
+			}
+
+			wc, err := conn.NextWriter(websocket.BinaryMessage)
+			if err != nil {
+				logger.Error("failed to get next writer for sovereign client", "err", err)
+				return err
+			}
+
+			if evt.Preserialized != nil {
+				_, err = wc.Write(evt.Preserialized)
+			} else {
+				err = evt.Serialize(wc)
+			}
+			if err != nil {
+				return fmt.Errorf("failed to write sovereign event: %w", err)
+			}
+
+			if err := wc.Close(); err != nil {
+				logger.Warn("failed to flush-close sovereign event write", "err", err)
+				return nil
+			}
+
+			lastWriteLk.Lock()
+			lastWrite = time.Now()
+			lastWriteLk.Unlock()
+
+			sentCounter.Inc()
+			bgs.sovereigntyMetrics.CanadianEventsSent.Inc()
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+// sovereignEventFilter filters events for the sovereign firehose
+func (bgs *BGS) sovereignEventFilter(evt *events.XRPCStreamEvent) bool {
+	if bgs.geographicFilter == nil {
+		return false
+	}
+
+	start := time.Now()
+	defer func() {
+		bgs.sovereigntyMetrics.FilterLatency.WithLabelValues("canadian").Observe(time.Since(start).Seconds())
+	}()
+
+	isCanadian := bgs.geographicFilter.ShouldIncludeInSovereignFeed(evt)
+
+	if isCanadian {
+		bgs.sovereigntyMetrics.EventsProcessed.WithLabelValues("included", "CA").Inc()
+	} else {
+		bgs.sovereigntyMetrics.EventsProcessed.WithLabelValues("filtered", "non-CA").Inc()
+		bgs.sovereigntyMetrics.FilteredEvents.Inc()
+	}
+
+	return isCanadian
 }

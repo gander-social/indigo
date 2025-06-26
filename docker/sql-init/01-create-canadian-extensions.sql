@@ -2,22 +2,22 @@
 -- Educational Note: These extensions support Canadian privacy law compliance
 -- and data sovereignty requirements for Gander Social
 
--- Create databases that align with Bluesky's existing structure
+-- Create databases that align with Gander's existing structure
 -- but add Canadian-specific compliance features
 CREATE DATABASE plc_dev;
 CREATE DATABASE pds_dev;
 CREATE DATABASE bgs_dev;
-CREATE DATABASE bsky_dev;
+CREATE DATABASE gndr_dev;
 
 -- Create Canadian-specific database for sovereignty features
 CREATE DATABASE canada_dev;
 
--- Grant permissions (matches existing Bluesky development patterns)
-GRANT ALL PRIVILEGES ON DATABASE plc_dev TO bsky;
-GRANT ALL PRIVILEGES ON DATABASE pds_dev TO bsky;
-GRANT ALL PRIVILEGES ON DATABASE bgs_dev TO bsky;
-GRANT ALL PRIVILEGES ON DATABASE bsky_dev TO bsky;
-GRANT ALL PRIVILEGES ON DATABASE canada_dev TO bsky;
+-- Grant permissions (matches existing Gander development patterns)
+GRANT ALL PRIVILEGES ON DATABASE plc_dev TO gndr;
+GRANT ALL PRIVILEGES ON DATABASE pds_dev TO gndr;
+GRANT ALL PRIVILEGES ON DATABASE bgs_dev TO gndr;
+GRANT ALL PRIVILEGES ON DATABASE gndr_dev TO gndr;
+GRANT ALL PRIVILEGES ON DATABASE canada_dev TO gndr;
 
 -- Switch to Canadian database for sovereignty extensions
 \c canada_dev;

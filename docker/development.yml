@@ -2,7 +2,7 @@
 # This provides only the essential external services needed for development
 # The AT Protocol services themselves run directly via Go tooling (make targets)
 #
-# Educational Note: This approach aligns with Bluesky's development practices
+# Educational Note: This approach aligns with Gander's development practices
 # - Fast iteration with Go services running directly
 # - Minimal external dependencies in containers
 # - SQLite for most development work
@@ -23,7 +23,7 @@ services:
     container_name: atproto_dev_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: bsky
+      POSTGRES_USER: gndr
       POSTGRES_PASSWORD: yksb
       POSTGRES_DB: atproto_dev
     ports:
@@ -32,7 +32,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./sql-init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bsky -d atproto_dev"]
+      test: ["CMD-SHELL", "pg_isready -U gndr -d atproto_dev"]
       interval: 10s
       timeout: 5s
       retries: 5

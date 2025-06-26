@@ -41,7 +41,7 @@ func run(args []string) error {
 		cmdLex,
 		cmdAccount,
 		cmdPLC,
-		cmdBsky,
+		cmdGndr,
 		cmdRecord,
 		cmdSyntax,
 		cmdKey,

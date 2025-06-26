@@ -39,7 +39,7 @@ func run(args []string) error {
 				&cli.StringFlag{
 					Name:    "appview-host",
 					Usage:   "method, hostname, and port of AppView instance",
-					Value:   "https://api.bsky.app",
+					Value:   "https://api.gndr.app",
 					EnvVars: []string{"ATP_APPVIEW_HOST"},
 				},
 				&cli.StringFlag{

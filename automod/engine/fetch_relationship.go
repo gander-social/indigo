@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	appbsky "github.com/bluesky-social/indigo/api/bsky"
-	"github.com/bluesky-social/indigo/atproto/syntax"
+	appgndr "github.com/gander-social/gander-indigo-sovereign/api/gndr"
+	"github.com/gander-social/gander-indigo-sovereign/atproto/syntax"
 )
 
-// Represents app.bsky social graph relationship between a primary account, and an "other" account
+// Represents app.gndr social graph relationship between a primary account, and an "other" account
 type AccountRelationship struct {
 	// the DID of the "other" account
 	DID syntax.DID
@@ -38,7 +38,7 @@ func (eng *Engine) GetAccountRelationship(ctx context.Context, primary, other sy
 		return &ar, nil
 	}
 
-	if eng.BskyClient == nil {
+	if eng.GndrClient == nil {
 		logger.Warn("skipping account relationship fetch")
 		ar := AccountRelationship{DID: other}
 		return &ar, nil
@@ -46,7 +46,7 @@ func (eng *Engine) GetAccountRelationship(ctx context.Context, primary, other sy
 
 	// fetch account relationship from AppView
 	accountRelationshipFetches.Inc()
-	resp, err := appbsky.GraphGetRelationships(ctx, eng.BskyClient, primary.String(), []string{other.String()})
+	resp, err := appgndr.GraphGetRelationships(ctx, eng.GndrClient, primary.String(), []string{other.String()})
 	if err != nil || len(resp.Relationships) != 1 {
 		logger.Warn("account relationship lookup failed", "err", err)
 		ar := AccountRelationship{DID: other}

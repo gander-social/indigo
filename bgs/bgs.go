@@ -15,17 +15,17 @@ import (
 	"sync"
 	"time"
 
-	atproto "github.com/bluesky-social/indigo/api/atproto"
-	comatproto "github.com/bluesky-social/indigo/api/atproto"
-	"github.com/bluesky-social/indigo/carstore"
-	"github.com/bluesky-social/indigo/did"
-	"github.com/bluesky-social/indigo/events"
-	"github.com/bluesky-social/indigo/handles"
-	"github.com/bluesky-social/indigo/indexer"
-	"github.com/bluesky-social/indigo/models"
-	"github.com/bluesky-social/indigo/repomgr"
-	"github.com/bluesky-social/indigo/util/svcutil"
-	"github.com/bluesky-social/indigo/xrpc"
+	atproto "github.com/gander-social/gander-indigo-sovereign/api/atproto"
+	comatproto "github.com/gander-social/gander-indigo-sovereign/api/atproto"
+	"github.com/gander-social/gander-indigo-sovereign/carstore"
+	"github.com/gander-social/gander-indigo-sovereign/did"
+	"github.com/gander-social/gander-indigo-sovereign/events"
+	"github.com/gander-social/gander-indigo-sovereign/handles"
+	"github.com/gander-social/gander-indigo-sovereign/indexer"
+	"github.com/gander-social/gander-indigo-sovereign/models"
+	"github.com/gander-social/gander-indigo-sovereign/repomgr"
+	"github.com/gander-social/gander-indigo-sovereign/util/svcutil"
+	"github.com/gander-social/gander-indigo-sovereign/xrpc"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"golang.org/x/sync/semaphore"
 	"golang.org/x/time/rate"
@@ -92,6 +92,11 @@ type BGS struct {
 	nextCrawlers []*url.URL
 	httpClient   http.Client
 
+	// NEW: Sovereignty components
+	config             *BGSConfig
+	geographicFilter   GeographicFilter
+	sovereigntyMetrics *SovereigntyMetrics
+
 	log *slog.Logger
 }
 
@@ -122,6 +127,11 @@ type BGSConfig struct {
 
 	// NextCrawlers gets forwarded POST /xrpc/com.atproto.sync.requestCrawl
 	NextCrawlers []*url.URL
+
+	// NEW: Sovereignty configuration
+	SovereigntyEnabled   bool
+	SovereignCountryCode string
+	SovereigntyMode      string // "strict", "balanced", "minimal"
 }
 
 func DefaultBGSConfig() *BGSConfig {
@@ -132,6 +142,10 @@ func DefaultBGSConfig() *BGSConfig {
 		ConcurrencyPerPDS:    100,
 		MaxQueuePerPDS:       1_000,
 		NumCompactionWorkers: 2,
+		// NEW: Sovereignty defaults
+		SovereigntyEnabled:   false,
+		SovereignCountryCode: "",
+		SovereigntyMode:      "balanced",
 	}
 }
 
@@ -140,6 +154,7 @@ func NewBGS(db *gorm.DB, ix *indexer.Indexer, repoman *repomgr.RepoManager, evtm
 	if config == nil {
 		config = DefaultBGSConfig()
 	}
+
 	db.AutoMigrate(User{})
 	db.AutoMigrate(AuthToken{})
 	db.AutoMigrate(models.PDS{})
@@ -166,6 +181,25 @@ func NewBGS(db *gorm.DB, ix *indexer.Indexer, repoman *repomgr.RepoManager, evtm
 		userCache: uc,
 
 		log: slog.Default().With("system", "bgs"),
+
+		// NEW: Store config and initialize sovereignty components
+		config: config,
+	}
+
+	// Initialize sovereignty components if enabled
+	if config.SovereigntyEnabled {
+		bgs.geographicFilter = NewCanadianGeographicFilter()
+		bgs.sovereigntyMetrics = NewSovereigntyMetrics()
+
+		// Initialize the geographic filter
+		ctx := context.Background()
+		if err := bgs.geographicFilter.Initialize(ctx); err != nil {
+			return nil, fmt.Errorf("failed to initialize geographic filter: %w", err)
+		}
+
+		bgs.log.Info("Sovereignty features enabled",
+			"country", config.SovereignCountryCode,
+			"mode", config.SovereigntyMode)
 	}
 
 	ix.CreateExternalUser = bgs.createExternalUser
@@ -271,7 +305,17 @@ func (bgs *BGS) StartWithListener(listen net.Listener) error {
 
 	// TODO: this API is temporary until we formalize what we want here
 
+	// Standard firehose endpoint
 	e.GET("/xrpc/com.atproto.sync.subscribeRepos", bgs.EventsHandler)
+
+	// NEW: Sovereign firehose endpoint (if enabled)
+	if bgs.config.SovereigntyEnabled {
+		e.GET("/xrpc/ca.atproto.sync.subscribeRepos", bgs.SovereignEventsHandler)
+		bgs.log.Info("Sovereign firehose endpoint registered",
+			"endpoint", "/xrpc/ca.atproto.sync.subscribeRepos",
+			"country", bgs.config.SovereignCountryCode)
+	}
+
 	e.GET("/xrpc/com.atproto.sync.getRecord", bgs.HandleComAtprotoSyncGetRecord)
 	e.GET("/xrpc/com.atproto.sync.getRepo", bgs.HandleComAtprotoSyncGetRepo)
 	e.GET("/xrpc/com.atproto.sync.getBlocks", bgs.HandleComAtprotoSyncGetBlocks)
@@ -363,7 +407,7 @@ d8888b. d888888b  d888b  .d8888. db   dD db    db
 88   8D   .88.   88. ~8~ db   8D 88 '88.    88
 Y8888P' Y888888P  Y888P  '8888Y' YP   YD    YP
 
-This is an atproto [https://atproto.com] relay instance, running the 'bigsky' codebase [https://github.com/bluesky-social/indigo]
+This is an atproto [https://atproto.com] relay instance, running the 'bigsky' codebase [https://github.com/gander-social/gander-indigo-sovereign]
 
 The firehose WebSocket path is at:  /xrpc/com.atproto.sync.subscribeRepos
 `

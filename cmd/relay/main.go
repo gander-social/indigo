@@ -16,11 +16,12 @@ import (
 	_ "go.uber.org/automaxprocs"
 	_ "net/http/pprof"
 
-	"github.com/bluesky-social/indigo/atproto/identity"
-	"github.com/bluesky-social/indigo/cmd/relay/relay"
-	"github.com/bluesky-social/indigo/cmd/relay/stream/eventmgr"
-	"github.com/bluesky-social/indigo/cmd/relay/stream/persist/diskpersist"
-	"github.com/bluesky-social/indigo/util/cliutil"
+	"github.com/gander-social/gander-indigo-sovereign/atproto/identity"
+	"github.com/gander-social/gander-indigo-sovereign/bgs"
+	"github.com/gander-social/gander-indigo-sovereign/cmd/relay/relay"
+	"github.com/gander-social/gander-indigo-sovereign/cmd/relay/stream/eventmgr"
+	"github.com/gander-social/gander-indigo-sovereign/cmd/relay/stream/persist/diskpersist"
+	"github.com/gander-social/gander-indigo-sovereign/util/cliutil"
 
 	"github.com/carlmjohnson/versioninfo"
 	"github.com/urfave/cli/v2"
@@ -148,7 +149,7 @@ func run(args []string) error {
 				&cli.StringSliceFlag{
 					Name:    "trusted-domains",
 					Usage:   "domain names which mark trusted hosts; use wildcard prefix to match suffixes",
-					Value:   cli.NewStringSlice("*.host.bsky.network"),
+					Value:   cli.NewStringSlice("*.host.gndr.network"),
 					EnvVars: []string{"RELAY_TRUSTED_DOMAINS"},
 				},
 				&cli.StringFlag{
@@ -176,6 +177,24 @@ func run(args []string) error {
 					Name:    "otel-exporter-otlp-endpoint",
 					Value:   "http://localhost:4328",
 					EnvVars: []string{"OTEL_EXPORTER_OTLP_ENDPOINT"},
+				},
+				// Sovereignty configuration flags
+				&cli.BoolFlag{
+					Name:    "sovereignty-enabled",
+					Usage:   "enable Canadian data sovereignty features",
+					EnvVars: []string{"RELAY_SOVEREIGNTY_ENABLED"},
+				},
+				&cli.StringFlag{
+					Name:    "sovereignty-country-code",
+					Usage:   "ISO 3166-1 alpha-2 country code for sovereignty filtering (e.g., CA)",
+					Value:   "CA",
+					EnvVars: []string{"RELAY_SOVEREIGNTY_COUNTRY_CODE"},
+				},
+				&cli.StringFlag{
+					Name:    "sovereignty-mode",
+					Usage:   "sovereignty filtering mode: strict, balanced, or minimal",
+					Value:   "strict",
+					EnvVars: []string{"RELAY_SOVEREIGNTY_MODE"},
 				},
 			},
 		},
@@ -226,7 +245,7 @@ func runRelay(cctx *cli.Context) error {
 	// TODO: add shared external cache
 	baseDir := identity.BaseDirectory{
 		SkipHandleVerification: true,
-		SkipDNSDomainSuffixes:  []string{".bsky.social"},
+		SkipDNSDomainSuffixes:  []string{".gndr.social"},
 		TryAuthoritativeDNS:    true,
 		PLCURL:                 cctx.String("plc-host"),
 	}
@@ -253,12 +272,21 @@ func runRelay(cctx *cli.Context) error {
 	relayConfig.TrustedDomains = cctx.StringSlice("trusted-domains")
 	relayConfig.LenientSyncValidation = cctx.Bool("lenient-sync-validation")
 
+	// NEW: Create BGS config with sovereignty settings
+	bgsConfig := bgs.DefaultBGSConfig()
+	bgsConfig.SovereigntyEnabled = cctx.Bool("sovereignty-enabled")
+	bgsConfig.SovereignCountryCode = cctx.String("sovereignty-country-code")
+	bgsConfig.SovereigntyMode = cctx.String("sovereignty-mode")
+
 	svcConfig := DefaultServiceConfig()
 	svcConfig.AllowInsecureHosts = cctx.Bool("allow-insecure-hosts")
 	svcConfig.DisableRequestCrawl = cctx.Bool("disable-request-crawl")
 	svcConfig.SiblingRelayHosts = cctx.StringSlice("sibling-relays")
-	if len(svcConfig.SiblingRelayHosts) > 0 {
-		logger.Info("sibling relay hosts configured for admin state forwarding", "servers", svcConfig.SiblingRelayHosts)
+
+	if bgsConfig.SovereigntyEnabled {
+		logger.Info("sovereignty mode enabled",
+			"countryCode", bgsConfig.SovereignCountryCode,
+			"mode", bgsConfig.SovereigntyMode)
 	}
 	if cctx.IsSet("admin-password") {
 		svcConfig.AdminPasswords = cctx.StringSlice("admin-password")

@@ -121,7 +121,7 @@ docker-compose -f docker/development.yml up -d appview appview_canada
 Once running, you can access various services:
 
 **Core Infrastructure:**
-- PostgreSQL: `localhost:5432` (user: bsky, password: yksb_dev_2024)
+- PostgreSQL: `localhost:5432` (user: gndr, password: yksb_dev_2024)
 - Redis: `localhost:6379` (password: redis_dev_2024)
 - IPFS API: `localhost:5001`
 - Mock HSM: `localhost:8200`

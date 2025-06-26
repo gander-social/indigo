@@ -7,14 +7,14 @@ import (
 	"net/http"
 	"time"
 
-	comatproto "github.com/bluesky-social/indigo/api/atproto"
-	"github.com/bluesky-social/indigo/atproto/identity"
-	"github.com/bluesky-social/indigo/atproto/syntax"
-	"github.com/bluesky-social/indigo/automod/cachestore"
-	"github.com/bluesky-social/indigo/automod/countstore"
-	"github.com/bluesky-social/indigo/automod/flagstore"
-	"github.com/bluesky-social/indigo/automod/setstore"
-	"github.com/bluesky-social/indigo/xrpc"
+	comatproto "github.com/gander-social/gander-indigo-sovereign/api/atproto"
+	"github.com/gander-social/gander-indigo-sovereign/atproto/identity"
+	"github.com/gander-social/gander-indigo-sovereign/atproto/syntax"
+	"github.com/gander-social/gander-indigo-sovereign/automod/cachestore"
+	"github.com/gander-social/gander-indigo-sovereign/automod/countstore"
+	"github.com/gander-social/gander-indigo-sovereign/automod/flagstore"
+	"github.com/gander-social/gander-indigo-sovereign/automod/setstore"
+	"github.com/gander-social/gander-indigo-sovereign/xrpc"
 )
 
 // runtime for executing rules, managing state, and recording moderation actions.
@@ -31,7 +31,7 @@ type Engine struct {
 	// unlike the other sub-modules, this field (Notifier) may be nil
 	Notifier Notifier
 	// use to fetch public account metadata from AppView; no auth
-	BskyClient *xrpc.Client
+	GndrClient *xrpc.Client
 	// used to persist moderation actions in ozone moderation service; optional, admin auth
 	OzoneClient *xrpc.Client
 	// used to fetch private account metadata from PDS or entryway; optional, admin auth
@@ -280,7 +280,7 @@ func (eng *Engine) ProcessRecordOp(ctx context.Context, op RecordOp) error {
 	}
 	eng.CanonicalLogLineRecord(&rc)
 	// purge the account meta cache when profile is updated
-	if rc.RecordOp.Collection == "app.bsky.actor.profile" {
+	if rc.RecordOp.Collection == "app.gndr.actor.profile" {
 		if err := eng.PurgeAccountCaches(ctx, op.DID); err != nil {
 			eng.Logger.Error("failed to purge identity cache", "err", err)
 		}

@@ -1,0 +1,44 @@
+# Gander Social License
+
+## Dual-Licensed Work with Additional Terms
+
+This work is a derivative of the Bluesky Social AT Protocol implementation and is licensed under the same dual-license terms as the original work: MIT License OR Apache License 2.0, at your discretion.
+
+**Original Copyright**: Copyright (c) 2022-2025 Bluesky Social PBC, @whyrusleeping, and Contributors
+
+**Derivative Work Copyright**: Copyright (c) 2025 Gander Social, MRL Digital Studio, and Contributors
+
+### License Terms
+
+You may choose to license this software under either:
+- **MIT License**: https://www.opensource.org/licenses/mit
+- **Apache License 2.0**: https://www.apache.org/licenses/LICENSE-2.0
+
+The complete text of both licenses is available in the LICENSE-MIT and LICENSE-APACHE files in this repository.
+
+### Additional Terms for Canadian Sovereign Features
+
+The Canadian sovereign data pipeline features added by Gander Social are subject to these additional terms:
+
+1. **Data Sovereignty Compliance**: Any deployment of the sovereign features must comply with applicable Canadian data protection and privacy laws, including but not limited to PIPEDA and provincial privacy legislation.
+
+2. **Attribution**: Redistributions must retain attribution to both the original Bluesky Social work and the Gander Social enhancements.
+
+3. **Export Controls**: The geographic filtering and data sovereignty features are intended for lawful use in compliance with applicable export control and privacy regulations.
+
+4. **Non-Discrimination**: The sovereign features must not be used to discriminate against users based on protected characteristics under applicable human rights legislation.
+
+### Contributing
+
+By contributing to this project, you agree that your contributions will be licensed under the same dual-license terms.
+
+### Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. THE AUTHORS SPECIFICALLY DISCLAIM ANY WARRANTIES REGARDING THE EFFECTIVENESS OF DATA SOVEREIGNTY MEASURES OR COMPLIANCE WITH ANY PARTICULAR LEGAL REQUIREMENTS.
+
+---
+
+**For full license terms, see:**
+- [MIT License](LICENSE-MIT)
+- [Apache License 2.0](LICENSE-APACHE)
+- [Original Dual License](LICENSE-DUAL)

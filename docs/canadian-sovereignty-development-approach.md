@@ -2,9 +2,9 @@
 
 ## Understanding My Initial Misunderstanding (An Important Learning Moment)
 
-When you first asked about the missing `docker/development.yml` file, I made a significant error in my approach. I created an overly complex Docker Compose setup without properly understanding how Bluesky actually develops their AT Protocol services. This is an excellent teaching moment about the importance of understanding existing systems before attempting to extend them.
+When you first asked about the missing `docker/development.yml` file, I made a significant error in my approach. I created an overly complex Docker Compose setup without properly understanding how Gander actually develops their AT Protocol services. This is an excellent teaching moment about the importance of understanding existing systems before attempting to extend them.
 
-Bluesky's development philosophy prioritizes simplicity and fast iteration. Rather than running everything in containers, they use Go's excellent tooling to compile and run services directly on your development machine. This approach provides several advantages that are particularly important for your Canadian sovereignty work:
+Gander's development philosophy prioritizes simplicity and fast iteration. Rather than running everything in containers, they use Go's excellent tooling to compile and run services directly on your development machine. This approach provides several advantages that are particularly important for your Canadian sovereignty work:
 
 **Fast Development Iteration:** When you modify relay code for Canadian features, you can rebuild and restart the service in seconds rather than minutes. This becomes crucial when you're implementing complex sovereignty logic that requires frequent testing and refinement.
 
@@ -12,9 +12,9 @@ Bluesky's development philosophy prioritizes simplicity and fast iteration. Rath
 
 **Resource Efficiency:** Your development machine's resources aren't consumed by multiple container layers, leaving more capacity for the actual AT Protocol services you're modifying.
 
-## The Proper Bluesky Development Workflow
+## The Proper Gander Development Workflow
 
-Let me walk you through how Bluesky development actually works, building from simple concepts to the complete workflow you'll need for your Canadian sovereignty implementation.
+Let me walk you through how Gander development actually works, building from simple concepts to the complete workflow you'll need for your Canadian sovereignty implementation.
 
 ### Foundation Layer: Understanding the Makefile
 
@@ -38,9 +38,9 @@ The AT Protocol implements a federated social network through several key servic
 
 ### Development Environment Setup: Building Your Foundation
 
-Let's establish your development environment step by step, building on Bluesky's existing patterns while adding Canadian sovereignty capabilities.
+Let's establish your development environment step by step, building on Gander's existing patterns while adding Canadian sovereignty capabilities.
 
-First, ensure you have the proper Go development environment. Bluesky uses the latest stable Go version, which provides excellent performance and the most recent language features. The `GOEXPERIMENT=loopvar` setting in the Makefile enables improved loop variable semantics that prevent common programming errors.
+First, ensure you have the proper Go development environment. Gander uses the latest stable Go version, which provides excellent performance and the most recent language features. The `GOEXPERIMENT=loopvar` setting in the Makefile enables improved loop variable semantics that prevent common programming errors.
 
 Copy the example environment configuration to create your local settings:
 
@@ -60,7 +60,7 @@ Now that you understand the foundation, let's build up your Canadian sovereignty
 
 The concept of a dual firehose means your implementation serves both the global AT Protocol network and a Canadian-specific network simultaneously. Think of this as running two parallel social networks that share identity infrastructure but maintain separate data flows.
 
-Your global firehose operates exactly like the standard Bluesky relay, aggregating data from all participating PDSs worldwide. This maintains compatibility with existing AT Protocol clients and services, ensuring Canadian users can still participate in the broader decentralized social web when they choose to.
+Your global firehose operates exactly like the standard Gander relay, aggregating data from all participating PDSs worldwide. This maintains compatibility with existing AT Protocol clients and services, ensuring Canadian users can still participate in the broader decentralized social web when they choose to.
 
 The Canadian firehose operates under different rules. It only includes data from users who have explicitly opted into the Canadian network and meet specific criteria. This might include Canadian citizens, Canadian residents, or users who have specifically requested Canadian data protection. The Canadian firehose also applies additional encryption and audit logging to meet Canadian privacy law requirements.
 
@@ -88,7 +88,7 @@ Let me provide you with a concrete roadmap for implementing these features, buil
 
 ### Phase 1: Infrastructure Preparation (Week 1-2)
 
-Begin by establishing your development environment using the proper Bluesky workflow with Canadian sovereignty extensions. Start your infrastructure services using the minimal Docker Compose setup I've provided, then use the Makefile targets to run AT Protocol services directly.
+Begin by establishing your development environment using the proper Gander workflow with Canadian sovereignty extensions. Start your infrastructure services using the minimal Docker Compose setup I've provided, then use the Makefile targets to run AT Protocol services directly.
 
 Modify the relay service to support dual data streams. Start with a simple flag that determines whether data should be included in a "Canadian" stream, without implementing the full sovereignty logic yet. This gives you a foundation to build upon while maintaining compatibility with existing functionality.
 
@@ -148,6 +148,6 @@ As you implement these features, keep several important principles in mind that 
 
 **Testing and Validation:** Develop comprehensive tests that validate not just functionality, but also compliance with Canadian privacy requirements. These tests should simulate real-world scenarios including privacy requests, compliance audits, and cross-border data access attempts.
 
-This approach builds upon Bluesky's excellent foundation while adding the Canadian sovereignty features you need for Gander Social. The key is understanding and respecting the existing architecture while carefully extending it to meet Canadian legal and technical requirements.
+This approach builds upon Gander's excellent foundation while adding the Canadian sovereignty features you need for Gander Social. The key is understanding and respecting the existing architecture while carefully extending it to meet Canadian legal and technical requirements.
 
 Remember, data sovereignty is as much about operational procedures and governance as it is about technical implementation. This technical foundation supports those broader requirements by providing the necessary tools for compliance, audit, and secure data handling within Canadian jurisdiction.

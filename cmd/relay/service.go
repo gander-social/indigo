@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bluesky-social/indigo/cmd/relay/relay"
-	"github.com/bluesky-social/indigo/util/svcutil"
+	"github.com/gander-social/gander-indigo-sovereign/cmd/relay/relay"
+	"github.com/gander-social/gander-indigo-sovereign/util/svcutil"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -26,6 +26,7 @@ type Service struct {
 	siblingClient http.Client
 }
 
+// ServiceConfig - REVERTED to original structure (no sovereignty fields)
 type ServiceConfig struct {
 	// list of hosts which get forwarded admin state changes (takedowns, etc)
 	SiblingRelayHosts []string
@@ -50,7 +51,6 @@ func DefaultServiceConfig() *ServiceConfig {
 }
 
 func NewService(r *relay.Relay, config *ServiceConfig) (*Service, error) {
-
 	if config == nil {
 		config = DefaultServiceConfig()
 	}
@@ -145,12 +145,14 @@ func (svc *Service) startWithListener(listen net.Listener) error {
 	e.GET("/_health", svc.HandleHealthCheck)
 	e.GET("/xrpc/_health", svc.HandleHealthCheck)
 
+	// REMOVED: Sovereignty endpoint registration - this belongs in BGS layer
 	e.GET("/xrpc/com.atproto.sync.subscribeRepos", svc.HandleComAtprotoSyncSubscribeRepos)
+
 	e.POST("/xrpc/com.atproto.sync.requestCrawl", svc.HandleComAtprotoSyncRequestCrawl)
 	e.GET("/xrpc/com.atproto.sync.listHosts", svc.HandleComAtprotoSyncListHosts)
 	e.GET("/xrpc/com.atproto.sync.getHostStatus", svc.HandleComAtprotoSyncGetHostStatus)
 	e.GET("/xrpc/com.atproto.sync.listRepos", svc.HandleComAtprotoSyncListRepos)
-	e.GET("/xrpc/com.atproto.sync.getRepo", svc.HandleComAtprotoSyncGetRepo) // just returns 3xx redirect to source PDS
+	e.GET("/xrpc/com.atproto.sync.getRepo", svc.HandleComAtprotoSyncGetRepo)
 	e.GET("/xrpc/com.atproto.sync.getRepoStatus", svc.HandleComAtprotoSyncGetRepoStatus)
 	e.GET("/xrpc/com.atproto.sync.getLatestCommit", svc.HandleComAtprotoSyncGetLatestCommit)
 
@@ -170,7 +172,7 @@ func (svc *Service) startWithListener(listen net.Listener) error {
 	admin.POST("/subs/unbanDomain", svc.handleAdminUnbanDomain)
 
 	// Repo-related Admin API
-	admin.GET("/repo/takedowns", svc.handleAdminListRepoTakeDowns) // NOTE: unused
+	admin.GET("/repo/takedowns", svc.handleAdminListRepoTakeDowns)
 	admin.POST("/repo/takeDown", svc.handleAdminTakeDownRepo)
 	admin.POST("/repo/reverseTakedown", svc.handleAdminReverseTakedown)
 
@@ -180,17 +182,12 @@ func (svc *Service) startWithListener(listen net.Listener) error {
 	admin.POST("/pds/changeLimits", svc.handleAdminChangeHostRateLimits)
 	admin.POST("/pds/block", svc.handleBlockHost)
 	admin.POST("/pds/unblock", svc.handleUnblockHost)
-	// removed: admin.POST("/pds/addTrustedDomain", svc.handleAdminAddTrustedDomain)
 
 	// Consumer-related Admin API
 	admin.GET("/consumers/list", svc.handleAdminListConsumers)
 
-	// In order to support booting on random ports in tests, we need to tell the
-	// Echo instance it's already got a port, and then use its StartServer
-	// method to re-use that listener.
 	e.Listener = listen
 	srv := &http.Server{}
-	// TODO: attach echo to Service, for shutdown?
 	return e.StartServer(srv)
 }
 
@@ -208,15 +205,12 @@ func (svc *Service) Shutdown() []error {
 }
 
 func (svc *Service) checkAdminAuth(next echo.HandlerFunc) echo.HandlerFunc {
-
-	// pre-compute valid HTTP auth headers based on the set of
 	validAuthHeaders := []string{}
 	for _, pw := range svc.config.AdminPasswords {
 		hdr := "Basic " + base64.StdEncoding.EncodeToString([]byte("admin:"+pw))
 		validAuthHeaders = append(validAuthHeaders, hdr)
 	}
 
-	// for paths that this middleware is applied to, enforce that the auth header must exist and match one of the known passwords
 	return func(c echo.Context) error {
 		hdr := c.Request().Header.Get("Authorization")
 		if hdr == "" {

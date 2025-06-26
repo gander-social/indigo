@@ -9,7 +9,7 @@ Details about how the relay operates which might not be obvious!
 - some admin UI changes are persisted across restarts (stored in database), others are not (ephemeral)
   - ephemeral (but can be configured via env vars): new-hosts-per-day limit; enable/disable requestCrawl
   - persisted (in database): account takedowns, domain bans, host bans, host account limit
-- the "lenient mode" configuration flag is intended as a short-term migration tool for [atproto Sync 1.1](https://github.com/bluesky-social/proposals/tree/main/0006-sync-iteration) and will be removed over time
+- the "lenient mode" configuration flag is intended as a short-term migration tool for [atproto Sync 1.1](https://github.com/gander-social/proposals/tree/main/0006-sync-iteration) and will be removed over time
 - once an upstream host websocket is established, the sequence numbers on that socket must always increase; messages with lower sequence will be dropped. but this is only strictly enforced over the life the the socket connection; if the relay restarts and the host emits older sequence numbers, those messages will start coming through
 - for a new host (no known previous sequence number), the relay will connect at "current" firehose offset, not "oldest" offset and backfill
 - for a known host, the relay will attempt to reconnect (eg, after a drop or restart) at the last persisted sequence number. persisting should happen every few seconds, or at clean shutdown of the daemon, but it is possible for the cursor to be slightly out of sync, resulting in replay of messages
@@ -54,4 +54,4 @@ The `stream` code should probably get merged back in with the `indigo:events` at
 - `goat` has several firehose verify flags
 - `./testing/` contains a framework for end-to-end relay integration tests
 - commit-level MST slice validation tests are in `indigo:atproto/repo`
-- there are some interop test resources at: https://github.com/bluesky-social/atproto-interop-tests
+- there are some interop test resources at: https://github.com/gander-social/atproto-interop-tests

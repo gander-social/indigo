@@ -24,7 +24,7 @@ func cidFromCdnUrl(str *string) *string {
 	}
 
 	u, err := url.Parse(*str)
-	if err != nil || u.Host != "cdn.bsky.app" {
+	if err != nil || u.Host != "cdn.gndr.app" {
 		return nil
 	}
 
